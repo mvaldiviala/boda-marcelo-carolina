@@ -1,0 +1,2018 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <script>
+    (function(){
+      const KEY = 'boda-admin-auth';
+      const PASS = 'boda2026admin';
+      if (localStorage.getItem(KEY) !== '1') {
+        const pw = prompt('🔐 Contraseña de administrador:');
+        if (pw !== PASS) {
+          document.write('<style>body{background:#111;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:1.2rem;}</style><body>Acceso denegado.</body>');
+          throw new Error('Unauthorized');
+        }
+        localStorage.setItem(KEY, '1');
+      }
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin · Boda Marcelo & Carolina</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --cream:#F7F4EF; --white:#fff;
+      --ink:#1A1714; --ink-mid:#3D3833; --ink-light:#7C756F;
+      --gold:#B8975A; --gold-light:#D4B57E; --gold-pale:#F0E8D8;
+      --border:#E2D9CF; --bg:#F2EDE6;
+      --green:#2D7D52; --green-pale:#E6F4ED;
+      --red:#A63028;   --red-pale:#FAEAE9;
+      --yellow:#8A6B10; --yellow-pale:#FDF3DC;
+      --shadow:rgba(26,23,20,.07);
+    }
+    html{font-size:16px;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;}
+
+    /* ── LOGIN ── */
+    #login{
+      position:fixed;inset:0;background:var(--ink);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      gap:0;z-index:999;
+    }
+    #login::before{
+      content:'結婚';position:absolute;
+      font-size:min(38vw,320px);color:rgba(184,151,90,.055);
+      font-family:serif;font-weight:900;top:50%;left:50%;
+      transform:translate(-50%,-50%);pointer-events:none;user-select:none;
+    }
+    .login-eyebrow{font-size:.68rem;letter-spacing:.35em;text-transform:uppercase;color:rgba(184,151,90,.6);margin-bottom:1.2rem;position:relative;}
+    .login-title{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,6vw,3.2rem);font-weight:300;color:var(--cream);text-align:center;line-height:1.15;margin-bottom:.2rem;position:relative;}
+    .login-title em{color:var(--gold);font-style:italic;}
+    .login-sub{font-size:.72rem;letter-spacing:.25em;color:rgba(247,244,239,.3);text-transform:uppercase;margin-bottom:2.5rem;position:relative;}
+    .login-box{position:relative;width:100%;max-width:320px;display:flex;flex-direction:column;gap:.75rem;}
+    .login-label{font-size:.68rem;letter-spacing:.25em;text-transform:uppercase;color:rgba(247,244,239,.4);text-align:center;}
+    .login-input{
+      width:100%;padding:14px 18px;text-align:center;
+      background:rgba(247,244,239,.06);border:1.5px solid rgba(247,244,239,.12);
+      border-radius:10px;color:var(--cream);font-family:'DM Sans',sans-serif;
+      font-size:1rem;letter-spacing:.1em;outline:none;
+      transition:border-color .2s;
+    }
+    .login-input:focus{border-color:var(--gold);}
+    .login-btn{
+      padding:14px;background:var(--gold);color:var(--ink);border:none;border-radius:10px;
+      font-family:'DM Sans',sans-serif;font-size:.95rem;font-weight:500;cursor:pointer;
+      transition:opacity .2s;
+    }
+    .login-btn:hover{opacity:.85;}
+    .login-err{font-size:.8rem;color:#E07070;text-align:center;min-height:1.2rem;}
+
+    /* ── APP SHELL ── */
+    #app{display:none;min-height:100vh;}
+
+    /* Header */
+    .header{
+      background:var(--ink);padding:0 24px;
+      display:flex;align-items:center;justify-content:space-between;
+      height:56px;position:sticky;top:0;z-index:100;
+    }
+    .header-brand{
+      font-family:'Cormorant Garamond',serif;
+      font-size:1.1rem;font-weight:300;color:var(--cream);
+      display:flex;align-items:center;gap:10px;
+    }
+    .header-brand span{color:var(--gold);}
+    .header-brand small{font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(247,244,239,.35);}
+    .btn-logout{
+      font-family:'DM Sans',sans-serif;font-size:.75rem;letter-spacing:.1em;
+      color:rgba(247,244,239,.4);background:transparent;border:none;cursor:pointer;
+      transition:color .2s;
+    }
+    .btn-logout:hover{color:var(--gold);}
+
+    /* Tabs */
+    .tabs-bar{
+      background:var(--white);border-bottom:1px solid var(--border);
+      display:flex;padding:0 24px;gap:0;position:sticky;top:56px;z-index:99;
+    }
+    .tab-btn{
+      padding:14px 20px;font-size:.85rem;font-weight:500;
+      color:var(--ink-light);background:transparent;border:none;
+      border-bottom:2px solid transparent;cursor:pointer;
+      transition:all .2s;white-space:nowrap;
+    }
+    .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+    .tab-btn:hover:not(.active){color:var(--ink);}
+
+    /* Content */
+    .tab-content{display:none;padding:28px 24px;max-width:1000px;margin:0 auto;}
+    .tab-content.active{display:block;}
+
+    /* Stats row */
+    .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:28px;}
+    .stat-card{
+      background:var(--white);border:1px solid var(--border);border-radius:12px;
+      padding:16px 18px;display:flex;flex-direction:column;gap:4px;
+    }
+    .stat-label{font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-light);}
+    .stat-num{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:400;color:var(--ink);line-height:1;}
+    .stat-card.green .stat-num{color:var(--green);}
+    .stat-card.red   .stat-num{color:var(--red);}
+    .stat-card.yellow .stat-num{color:var(--yellow);}
+
+    /* Section card */
+    .card{background:var(--white);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px;}
+    .card-head{
+      padding:16px 20px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    }
+    .card-title{font-size:.95rem;font-weight:500;color:var(--ink);}
+    .card-body{padding:20px;}
+
+    /* Form */
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    @media(max-width:600px){.form-grid{grid-template-columns:1fr;}}
+    .form-full{grid-column:1/-1;}
+    .form-group{display:flex;flex-direction:column;gap:6px;}
+    .form-label{font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-light);}
+    .form-input,.form-textarea{
+      padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;
+      font-family:'DM Sans',sans-serif;font-size:.9rem;color:var(--ink);
+      background:var(--cream);outline:none;transition:border-color .2s;
+    }
+    .form-input:focus,.form-textarea:focus{border-color:var(--gold);}
+    .form-textarea{min-height:80px;resize:vertical;}
+    .form-hint{font-size:.72rem;color:var(--ink-light);}
+
+    /* Buttons */
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      padding:10px 20px;border-radius:8px;font-family:'DM Sans',sans-serif;
+      font-size:.85rem;font-weight:500;cursor:pointer;border:none;
+      transition:all .2s;white-space:nowrap;
+    }
+    .btn-gold{background:var(--gold);color:var(--ink);}
+    .btn-gold:hover{opacity:.85;}
+    .btn-dark{background:var(--ink);color:var(--cream);}
+    .btn-dark:hover{background:var(--ink-mid);}
+    .btn-ghost{background:transparent;color:var(--ink-light);border:1.5px solid var(--border);}
+    .btn-ghost:hover{border-color:var(--ink-light);color:var(--ink);}
+    .btn-danger{background:transparent;color:var(--red);border:1.5px solid var(--red);padding:6px 12px;font-size:.78rem;}
+    .btn-danger:hover{background:var(--red-pale);}
+    .btn-sm{padding:7px 14px;font-size:.78rem;}
+    .btn-icon{padding:7px;border-radius:6px;}
+    .btn:disabled{opacity:.45;cursor:not-allowed;}
+
+    /* Invitation list */
+    .inv-list{display:flex;flex-direction:column;gap:12px;}
+    .inv-item{
+      border:1.5px solid var(--border);border-radius:12px;overflow:hidden;
+      transition:border-color .25s;
+    }
+    .inv-item.expanded{border-color:var(--gold-light);}
+    .inv-item-head{
+      padding:14px 18px;display:flex;align-items:center;gap:14px;
+      cursor:pointer;background:var(--white);
+      transition:background .15s;
+    }
+    .inv-item-head:hover{background:var(--cream);}
+    .inv-code{
+      font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;
+      color:var(--gold);background:var(--gold-pale);
+      padding:3px 10px;border-radius:100px;white-space:nowrap;
+    }
+    .inv-group-name{font-size:.95rem;font-weight:500;color:var(--ink);flex:1;}
+    .inv-progress{
+      display:flex;align-items:center;gap:8px;
+      font-size:.78rem;color:var(--ink-light);white-space:nowrap;
+    }
+    .pip{width:8px;height:8px;border-radius:50%;}
+    .pip.green{background:var(--green);}
+    .pip.red{background:var(--red);}
+    .pip.yellow{background:#C4930A;}
+    .inv-chevron{color:var(--ink-light);font-size:.8rem;transition:transform .3s;}
+    .inv-item.expanded .inv-chevron{transform:rotate(180deg);}
+    .badge-enviada{
+      font-size:.68rem;letter-spacing:.08em;padding:3px 9px;border-radius:20px;
+      border:1.5px solid;cursor:pointer;white-space:nowrap;user-select:none;
+      transition:all .15s;flex-shrink:0;
+    }
+    .badge-enviada.sent{background:#d4f5e2;color:#1a7a45;border-color:#1a7a45;}
+    .badge-enviada.unsent{background:var(--cream);color:var(--ink-light);border-color:var(--border);}
+
+    .inv-item-body{
+      display:none;padding:16px 18px;
+      background:var(--cream);border-top:1px solid var(--border);
+    }
+    .inv-item.expanded .inv-item-body{display:block;}
+
+    .inv-message-preview{
+      font-size:.85rem;color:var(--ink-mid);line-height:1.6;
+      margin-bottom:14px;padding:10px 14px;
+      background:var(--white);border-radius:8px;border-left:3px solid var(--gold);
+    }
+
+    /* Guest list inside invitation */
+    .guest-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+    .guest-row{
+      display:flex;align-items:center;gap:10px;padding:9px 12px;
+      background:var(--white);border-radius:8px;border:1px solid var(--border);
+    }
+    .guest-row-name{flex:1;font-size:.88rem;color:var(--ink);}
+    .status-badge{
+      font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+      padding:3px 10px;border-radius:100px;font-weight:500;white-space:nowrap;
+    }
+    .badge-confirmed{background:var(--green-pale);color:var(--green);}
+    .badge-declined {background:var(--red-pale);color:var(--red);}
+    .badge-pending  {background:var(--yellow-pale);color:var(--yellow);}
+
+    .add-guest-row{
+      display:flex;gap:8px;align-items:center;margin-top:6px;
+    }
+    .add-guest-input{
+      flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;
+      font-family:'DM Sans',sans-serif;font-size:.88rem;color:var(--ink);
+      background:var(--white);outline:none;transition:border-color .2s;
+    }
+    .add-guest-input:focus{border-color:var(--gold);}
+
+    .inv-actions{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+
+    /* Confirmaciones table */
+    .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+    .filter-btn{
+      padding:7px 16px;border-radius:100px;font-size:.78rem;font-weight:500;
+      cursor:pointer;border:1.5px solid var(--border);background:transparent;
+      color:var(--ink-light);font-family:'DM Sans',sans-serif;transition:all .2s;
+    }
+    .filter-btn.active{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+
+    .conf-table-wrap{overflow-x:auto;}
+    table{width:100%;border-collapse:collapse;}
+    th{
+      text-align:left;padding:10px 14px;
+      font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;
+      color:var(--ink-light);border-bottom:1.5px solid var(--border);
+      white-space:nowrap;
+    }
+    td{
+      padding:11px 14px;font-size:.88rem;color:var(--ink);
+      border-bottom:1px solid var(--border);vertical-align:middle;
+    }
+    tr:last-child td{border-bottom:none;}
+    tr:hover td{background:var(--cream);}
+
+    .menu-chip{
+      display:inline-block;font-size:.72rem;padding:2px 8px;
+      border-radius:4px;background:var(--gold-pale);color:var(--ink-mid);
+      white-space:nowrap;
+    }
+
+    /* CSV button */
+    .section-actions{display:flex;justify-content:flex-end;margin-bottom:12px;}
+
+    /* Empty state */
+    .empty{text-align:center;padding:40px 20px;color:var(--ink-light);font-size:.9rem;}
+    .empty-icon{font-size:2.5rem;margin-bottom:.75rem;}
+
+    /* Toast */
+    #toast{
+      position:fixed;bottom:24px;left:50%;
+      transform:translateX(-50%) translateY(80px);
+      background:var(--ink);color:var(--cream);padding:11px 22px;
+      border-radius:100px;font-size:.82rem;z-index:9999;
+      border-left:3px solid var(--gold);
+      transition:transform .4s cubic-bezier(.4,0,.2,1);
+      white-space:nowrap;pointer-events:none;
+    }
+    #toast.show{transform:translateX(-50%) translateY(0);}
+
+    /* Loading spinner */
+    .spinner{
+      display:inline-block;width:16px;height:16px;
+      border:2px solid var(--border);border-top-color:var(--gold);
+      border-radius:50%;animation:spin .7s linear infinite;
+    }
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* ── TYPE TOGGLE (individual / grupal) ── */
+    .type-toggle{
+      display:flex;gap:0;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px;width:100%;
+    }
+    .type-toggle input[type=radio]{display:none;}
+    .type-toggle label{
+      flex:1;text-align:center;
+      padding:9px 12px;font-size:.82rem;font-weight:500;
+      color:var(--ink-light);cursor:pointer;transition:all .2s;
+      background:transparent;white-space:nowrap;
+    }
+    .type-toggle input[type=radio]:checked + label{
+      background:var(--ink);color:var(--cream);
+    }
+
+    /* ── INVITATION TYPE BADGE ── */
+    .inv-type-badge{
+      font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;
+      padding:2px 9px;border-radius:100px;font-weight:500;white-space:nowrap;
+    }
+    .badge-individual{background:#EBF0FF;color:#3455A4;}
+    .badge-grupo{background:var(--gold-pale);color:var(--ink-mid);}
+    .badge-completa{background:#FFF5E8;color:#8A5C10;}
+    .badge-fiesta{background:#E8F5F8;color:#1E6A78;}
+
+    /* ── PHOTO SECTION ── */
+    .photo-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+    .photo-thumb{
+      position:relative;display:inline-flex;
+      border-radius:6px;overflow:hidden;
+      border:1px solid var(--border);
+    }
+    .photo-thumb img{height:64px;width:auto;display:block;object-fit:cover;min-width:64px;}
+    .photo-thumb-rm{
+      position:absolute;top:2px;right:2px;
+      background:rgba(26,23,20,.75);color:#fff;border:none;
+      border-radius:4px;width:18px;height:18px;font-size:10px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      line-height:1;padding:0;transition:background .15s;
+    }
+    .photo-thumb-rm:hover{background:var(--red);}
+    .btn-upload-photo{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:7px 14px;border-radius:7px;border:1.5px dashed var(--border);
+      background:transparent;color:var(--ink-light);cursor:pointer;
+      font-size:.82rem;font-family:inherit;transition:all .2s;margin-top:8px;
+    }
+    .btn-upload-photo:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-pale);}
+    .photo-upload-progress{
+      margin-top:6px;font-size:.78rem;color:var(--ink-light);
+      display:flex;align-items:center;gap:6px;
+    }
+    .photo-upload-progress .spinner{width:12px;height:12px;border-width:2px;}
+
+    /* ── CARRUSEL TAB ── */
+    .car-card { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; }
+    .car-card-img { width:100%; aspect-ratio:16/9; overflow:hidden; background:var(--cream); }
+    .car-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+    .car-card-footer { padding:8px 10px; display:flex; align-items:center; justify-content:space-between; gap:6px; border-top:1px solid var(--border); }
+    .car-order-label { font-size:.72rem; font-weight:600; color:var(--ink-light); }
+    .car-order-btns { display:flex; gap:4px; }
+    .car-order-btn { width:28px; height:28px; border-radius:6px; border:1px solid var(--border); background:var(--cream); cursor:pointer; font-size:.85rem; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+    .car-order-btn:hover { background:var(--gold-pale); border-color:var(--gold); }
+    .car-order-btn:disabled { opacity:.3; cursor:default; }
+
+    /* ── EXPERIENCIAS TAB ── */
+    .exp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:16px; margin-top:16px; }
+    .exp-card { background:var(--white); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; }
+    .exp-card-img { width:100%; aspect-ratio:16/9; background:var(--cream); display:flex; align-items:center; justify-content:center; font-size:2.5rem; overflow:hidden; }
+    .exp-card-img img { width:100%; height:100%; object-fit:cover; display:block; }
+    .exp-card-body { padding:14px; flex:1; display:flex; flex-direction:column; gap:6px; }
+    .exp-card-name { font-weight:600; font-size:.95rem; color:var(--ink); }
+    .exp-card-desc { font-size:.8rem; color:var(--ink-light); line-height:1.5; flex:1; }
+    .exp-card-price { font-size:.88rem; font-weight:600; color:var(--gold); }
+    .exp-card-footer { padding:10px 14px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .exp-progress-wrap { flex:1; height:5px; background:var(--border); border-radius:3px; overflow:hidden; }
+    .exp-progress-bar { height:100%; background:var(--gold); border-radius:3px; transition:width .4s; }
+    .exp-pct-label { font-size:.72rem; color:var(--ink-light); white-space:nowrap; }
+    .exp-form { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    @media(max-width:600px){ .exp-form{ grid-template-columns:1fr; } .exp-grid{ grid-template-columns:1fr; } }
+    .exp-form-full { grid-column:1/-1; }
+
+    /* ── DONATIONS TAB ── */
+    .don-item-row{
+      display:flex;flex-direction:column;gap:6px;
+      padding:14px 0;border-bottom:1px solid var(--border);
+    }
+    .don-item-row:last-child{border-bottom:none;}
+    .don-item-header{display:flex;justify-content:space-between;align-items:center;}
+    .don-item-name{font-size:.9rem;color:var(--ink);display:flex;align-items:center;gap:6px;}
+    .don-item-price{font-size:.82rem;color:var(--ink-light);}
+    .don-progress-bar-wrap{height:6px;background:var(--border);border-radius:3px;overflow:hidden;}
+    .don-progress-bar{height:100%;background:var(--gold);border-radius:3px;transition:width .5s;}
+    .don-progress-text{font-size:.72rem;color:var(--ink-light);}
+
+    .badge-paid{background:var(--green-pale);color:var(--green);}
+    .badge-pending-don{background:var(--yellow-pale);color:var(--yellow);}
+    .badge-transferred{background:#FDF3DC;color:#8A6B10;}
+
+    /* Responsive */
+    @media(max-width:600px){
+      .tabs-bar{overflow-x:auto;}
+      .tab-content{padding:20px 16px;}
+      .card-body{padding:14px;}
+      .inv-item-head{flex-wrap:wrap;}
+      .inv-progress{font-size:.72rem;}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Auto-init si ya está autenticado -->
+<script>
+  (function() {
+    if (localStorage.getItem('boda-admin-auth') === '1') {
+      document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('login').style.display = 'none';
+        document.getElementById('app').style.display  = 'block';
+        initSb();
+        loadAll();
+      });
+    }
+  })();
+</script>
+
+<!-- ── LOGIN ── -->
+<div id="login">
+  <p class="login-eyebrow">panel de administración</p>
+  <div class="login-title"><em>Marcelo</em> & <em>Carolina</em></div>
+  <p class="login-sub">05 · 09 · 2026 · La Serena</p>
+  <div class="login-box">
+    <p class="login-label">Contraseña</p>
+    <input class="login-input" id="pwdInput" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Entrar →</button>
+    <p class="login-err" id="loginErr"></p>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="app">
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <span>M & C</span>
+      <small>Admin · 05.09.2026</small>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="tabs-bar">
+    <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Resumen</button>
+    <button class="tab-btn" onclick="switchTab('invitaciones')">🎌 Invitaciones</button>
+    <button class="tab-btn" onclick="switchTab('confirmaciones')">✅ Confirmaciones</button>
+    <button class="tab-btn" onclick="switchTab('donaciones')">💝 Donaciones</button>
+    <button class="tab-btn" onclick="switchTab('experiencias')">⭐ Experiencias</button>
+    <button class="tab-btn" onclick="switchTab('carrusel')">🌸 Carrusel</button>
+  </nav>
+
+  <!-- ── TAB: RESUMEN ── -->
+  <div class="tab-content active" id="tab-dashboard">
+    <div class="stats-row" id="statsRow">
+      <div class="stat-card"><div class="stat-label">Total invitados</div><div class="stat-num" id="sTot">—</div></div>
+      <div class="stat-card green"><div class="stat-label">Confirmados</div><div class="stat-num" id="sConf">—</div></div>
+      <div class="stat-card red"><div class="stat-label">Declinaron</div><div class="stat-num" id="sDec">—</div></div>
+      <div class="stat-card yellow"><div class="stat-label">Pendientes</div><div class="stat-num" id="sPend">—</div></div>
+      <div class="stat-card"><div class="stat-label">Grupos</div><div class="stat-num" id="sGrupos">—</div></div>
+    </div>
+
+    <!-- Menu breakdown -->
+    <div class="card">
+      <div class="card-head"><div class="card-title">🍽️ Resumen de menú</div></div>
+      <div class="card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" id="menuSummary">
+          <div>
+            <p style="font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-light);margin-bottom:10px;">Entrada</p>
+            <div id="menuEntrada"></div>
+          </div>
+          <div>
+            <p style="font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-light);margin-bottom:10px;">Plato de fondo</p>
+            <div id="menuPlato"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: INVITACIONES ── -->
+  <div class="tab-content" id="tab-invitaciones">
+
+    <!-- Nueva invitación -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-head">
+        <div class="card-title">➕ Nueva invitación</div>
+        <button class="btn btn-ghost btn-sm" onclick="toggleNewForm()">Mostrar / Ocultar</button>
+      </div>
+      <div class="card-body" id="newInvForm">
+        <!-- Type toggle -->
+        <div class="type-toggle">
+          <input type="radio" name="invType" id="typeIndividual" value="individual" checked onchange="onInvTypeChange()"/>
+          <label for="typeIndividual">👤 Invitación individual</label>
+          <input type="radio" name="invType" id="typeGrupal" value="grupal" onchange="onInvTypeChange()"/>
+          <label for="typeGrupal">👥 Invitación grupal</label>
+        </div>
+        <div class="type-toggle" style="margin-top:8px;">
+          <input type="radio" name="invTipo" id="tipoCompleta" value="completa" checked/>
+          <label for="tipoCompleta">🍽️ Experiencia completa</label>
+          <input type="radio" name="invTipo" id="tipoFiesta" value="fiesta"/>
+          <label for="tipoFiesta">🎉 Solo fiesta</label>
+        </div>
+        <div class="form-grid">
+          <!-- Individual: solo nombre del invitado -->
+          <div class="form-group form-full" id="fInvitadosIndividualWrap">
+            <label class="form-label">Nombre del invitado</label>
+            <input class="form-input" id="fInvitadoSingle" placeholder="ej: Jorge Cuellar Valdivia"
+              oninput="autoGenCode()"/>
+          </div>
+          <!-- Grupal: nombre de grupo + lista de personas -->
+          <div class="form-group" id="fGrupoWrap" style="display:none;">
+            <label class="form-label">Nombre del grupo</label>
+            <input class="form-input" id="fGrupo" placeholder="ej: Familia Rodríguez Pérez"
+              oninput="autoGenCode()"/>
+          </div>
+          <div class="form-group form-full" id="fInvitadosGrupalWrap" style="display:none;">
+            <label class="form-label">Integrantes del grupo (uno por línea)</label>
+            <textarea class="form-textarea" id="fInvitados" placeholder="Juan Rodríguez&#10;María Pérez&#10;Pedro Rodríguez"></textarea>
+          </div>
+          <div class="form-group form-full">
+            <label class="form-label">Mensaje personalizado</label>
+            <textarea class="form-textarea" id="fMensaje" placeholder="Escribe un mensaje especial..."></textarea>
+          </div>
+          <!-- Photos section -->
+          <div class="form-group form-full">
+            <label class="form-label">Fotos</label>
+            <p style="font-size:.78rem;color:var(--ink-light);margin:0;">Las fotos se agregan desde el detalle de la invitación después de crearla.</p>
+          </div>
+          <div class="form-group form-full" style="flex-direction:row;align-items:center;gap:12px;">
+            <button class="btn btn-gold" onclick="createInvitation()" id="btnCreate">Crear invitación</button>
+            <span id="createStatus" style="font-size:.82rem;color:var(--ink-light);"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista de invitaciones -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">📋 Todas las invitaciones</div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Actualizar</button>
+      </div>
+      <div class="card-body">
+        <div class="inv-list" id="invList">
+          <div class="empty"><div class="empty-icon">🌸</div>Cargando...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CONFIRMACIONES ── -->
+  <div class="tab-content" id="tab-confirmaciones">
+    <div class="section-actions">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Exportar CSV</button>
+    </div>
+    <div class="filter-bar">
+      <button class="filter-btn active" onclick="setFilter('all',this)">Todos</button>
+      <button class="filter-btn" onclick="setFilter('confirmed',this)">✅ Confirmados</button>
+      <button class="filter-btn" onclick="setFilter('pending',this)">⏳ Pendientes</button>
+      <button class="filter-btn" onclick="setFilter('declined',this)">❌ Declinaron</button>
+    </div>
+
+    <!-- Experiencia Completa -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-head">
+        <div class="card-title">🍽️ Experiencia completa</div>
+        <span class="inv-type-badge badge-completa" id="countCompleta">—</span>
+      </div>
+      <div class="conf-table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Grupo</th><th>Estado</th><th>Entrada</th><th>Plato de fondo</th></tr></thead>
+          <tbody id="confTableCompleta"><tr><td colspan="5" class="empty">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Solo Fiesta -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">🎉 Solo fiesta</div>
+        <span class="inv-type-badge badge-fiesta" id="countFiesta">—</span>
+      </div>
+      <div class="conf-table-wrap">
+        <table>
+          <thead><tr><th>Nombre</th><th>Grupo</th><th>Estado</th></tr></thead>
+          <tbody id="confTableFiesta"><tr><td colspan="3" class="empty">Cargando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: EXPERIENCIAS ── -->
+  <div class="tab-content" id="tab-experiencias">
+
+    <!-- Setup check -->
+    <div id="expSetupBanner" style="display:none; background:#FFF8E8; border:1px solid #E8C96A; border-radius:10px; padding:16px 20px; margin-bottom:20px;">
+      <strong>⚠️ Tabla no encontrada.</strong> Ejecuta este SQL una vez en el <a href="https://supabase.com/dashboard/project/cgvyqgwhjkjnphhimurr/sql/new" target="_blank" style="color:var(--gold);">SQL Editor de Supabase</a> y luego recarga:
+      <pre id="expSetupSQL" style="background:var(--cream);border:1px solid var(--border);border-radius:6px;padding:10px;margin-top:8px;font-size:.75rem;overflow-x:auto;white-space:pre;"></pre>
+      <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('expSetupSQL').textContent).then(()=>toast('SQL copiado ✓'))">📋 Copiar SQL</button>
+    </div>
+
+    <!-- Nueva experiencia -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-head">
+        <div class="card-title">✨ Nueva experiencia</div>
+      </div>
+      <div class="card-body">
+        <div class="exp-form">
+          <div class="form-group">
+            <label class="form-label">Emoji</label>
+            <input class="form-input" id="eEmoji" placeholder="🧳" maxlength="4" style="font-size:1.4rem;text-align:center;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Precio (CLP)</label>
+            <input class="form-input" id="ePrecio" type="number" placeholder="75000" min="0">
+          </div>
+          <div class="form-group exp-form-full">
+            <label class="form-label">Nombre</label>
+            <input class="form-input" id="eNombre" placeholder="ej: Tren bala Tokio → Osaka">
+          </div>
+          <div class="form-group exp-form-full">
+            <label class="form-label">Descripción</label>
+            <input class="form-input" id="eDesc" placeholder="ej: Shinkansen Nozomi · clase ordinaria">
+          </div>
+          <div class="form-group exp-form-full">
+            <label class="form-label">Foto</label>
+            <input type="file" id="eFotoFile" accept=".jpg,.jpeg,.png" style="display:none" onchange="handleExpPhotoPreview(this)">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <button class="btn-upload-photo" onclick="document.getElementById('eFotoFile').click()">📷 Seleccionar foto</button>
+              <img id="ePhotoPreview" src="" alt="" style="display:none;height:48px;border-radius:6px;border:1px solid var(--border);">
+              <span id="ePhotoName" style="font-size:.78rem;color:var(--ink-light);"></span>
+            </div>
+          </div>
+          <div class="exp-form-full" style="display:flex;align-items:center;gap:12px;">
+            <button class="btn btn-gold" onclick="createExperiencia()" id="btnCreateExp">Crear experiencia</button>
+            <span id="expCreateStatus" style="font-size:.82rem;color:var(--ink-light);"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">📋 Todas las experiencias</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" onclick="importarExperiencias()">📥 Importar JSON</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadExperiencias()">↻ Actualizar</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="expGrid" class="exp-grid"><div class="empty"><div class="empty-icon">⭐</div>Cargando…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CARRUSEL ── -->
+  <div class="tab-content" id="tab-carrusel">
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-head">
+        <div class="card-title">🌸 Fotos del carrusel</div>
+        <button class="btn btn-ghost btn-sm" onclick="loadCarrusel()">↻ Actualizar</button>
+      </div>
+      <div class="card-body">
+        <p style="font-size:.82rem;color:var(--ink-light);margin-bottom:16px;">Las fotos se muestran en la sección de luna de miel. Usa las flechas para ordenarlas.</p>
+        <!-- Upload -->
+        <label class="btn btn-gold" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px;margin-bottom:20px;">
+          📷 Subir foto
+          <input type="file" accept="image/*" style="display:none;" onchange="uploadCarruselFoto(this)">
+        </label>
+        <span id="carruselUploadStatus" style="font-size:.82rem;color:var(--ink-light);margin-left:8px;"></span>
+        <!-- Grid -->
+        <div id="carruselGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-top:8px;">
+          <div class="empty"><div class="empty-icon">🌸</div>Sin fotos todavía.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: DONACIONES ── -->
+  <div class="tab-content" id="tab-donaciones">
+    <!-- Summary stats -->
+    <div class="stats-row" id="donStatsRow">
+      <div class="stat-card"><div class="stat-label">Total donaciones</div><div class="stat-num" id="dTot">—</div></div>
+      <div class="stat-card green"><div class="stat-label">Pagadas</div><div class="stat-num" id="dPaid">—</div></div>
+      <div class="stat-card yellow"><div class="stat-label">Pendientes</div><div class="stat-num" id="dPend">—</div></div>
+      <div class="stat-card"><div class="stat-label">Monto confirmado</div><div class="stat-num" id="dMonto" style="font-size:1.4rem;">—</div></div>
+    </div>
+
+    <!-- Item progress -->
+    <div class="card" style="margin-bottom:20px;">
+      <div class="card-head"><div class="card-title">🎯 Progreso por ítem</div></div>
+      <div class="card-body" id="donItemProgress">
+        <div class="empty"><div class="empty-icon">⏳</div>Cargando...</div>
+      </div>
+    </div>
+
+    <!-- Donations table -->
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">📋 Todas las donaciones</div>
+        <button class="btn btn-ghost btn-sm" onclick="loadDonaciones()">↻ Actualizar</button>
+      </div>
+      <div class="card-body">
+        <div class="conf-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Grupo</th>
+                <th>Items seleccionados</th>
+                <th>Total CLP</th>
+                <th>Estado</th>
+                <th>Fecha</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody id="donTableBody">
+              <tr><td colspan="6" class="empty">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<div id="toast"></div>
+
+<script>
+/* =============================================
+   CONFIG
+============================================= */
+const SUPABASE_URL          = 'https://cgvyqgwhjkjnphhimurr.supabase.co';
+const SUPABASE_SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNndnlxZ3doamtqbnBoaGltdXJyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDQ2ODU5MiwiZXhwIjoyMDkwMDQ0NTkyfQ.HNwx2jI-ZA3FSIEOot92RRMAuQGK5ihXb8DKL4cNf1E';
+const ADMIN_PASSWORD        = 'boda2026'; // ← cambia esta contraseña cuando quieras
+
+/* =============================================
+   DONATION ITEMS
+============================================= */
+const DONATION_ITEMS = [
+  { id: 'maleta',     emoji: '🧳', name: 'Maleta adicional SCL → Tokio',           price:  75000 },
+  { id: 'shinkansen', emoji: '🚄', name: 'Tren bala Tokio → Osaka',                price:  55000 },
+  { id: 'hotel',      emoji: '🏯', name: '3 noches de hotel en Kioto',             price: 280000 },
+  { id: 'kaiseki',    emoji: '🍱', name: 'Cena kaiseki tradicional',               price:  68000 },
+  { id: 'macha',      emoji: '🍵', name: 'Ceremonia del té en Uji',                price:  28000 },
+  { id: 'nara',       emoji: '🦌', name: 'Día en Nara',                            price:  22000 },
+  { id: 'onsen',      emoji: '♨️', name: 'Onsen privado en Arashiyama',            price:  42000 },
+  { id: 'rickshaw',   emoji: '🎌', name: 'Paseo en rickshaw por Gion',             price:  35000 },
+  { id: 'teamlab',    emoji: '🌊', name: 'TeamLab Borderless · Tokio',             price:  26000 },
+];
+
+/* =============================================
+   STATE
+============================================= */
+let sb = null;
+let allGuests = [];
+let allInvs   = [];
+let allDon    = [];
+let activeFilter = 'all';
+
+/* =============================================
+   LOGIN
+============================================= */
+function doLogin() {
+  const val = document.getElementById('pwdInput').value;
+  if (val === ADMIN_PASSWORD) {
+    if (SUPABASE_SERVICE_KEY === 'TU_SERVICE_ROLE_KEY') {
+      document.getElementById('loginErr').textContent = 'Agrega tu service_role key en admin.html primero';
+      return;
+    }
+    document.getElementById('login').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initSb();
+    loadAll();
+  } else {
+    document.getElementById('loginErr').textContent = 'Contraseña incorrecta';
+    document.getElementById('pwdInput').value = '';
+  }
+}
+
+function initSb() {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false }
+  });
+}
+
+function doLogout() {
+  document.getElementById('login').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pwdInput').value = '';
+}
+
+/* =============================================
+   TABS
+============================================= */
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'donaciones'  && sb) loadDonaciones();
+  if (name === 'experiencias' && sb) loadExperiencias();
+  if (name === 'carrusel'    && sb) loadCarrusel();
+}
+
+function toggleNewForm() {
+  const f = document.getElementById('newInvForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+/* =============================================
+   LOAD ALL DATA
+============================================= */
+async function loadAll() {
+  try {
+    const [{ data: invs }, { data: guests }] = await Promise.all([
+      sb.from('invitaciones').select('*').order('created_at', { ascending: false }),
+      sb.from('invitados').select('*').order('orden', { ascending: true, nullsFirst: true }).order('nombre'),
+    ]);
+
+    allInvs   = invs   || [];
+    allGuests = guests || [];
+
+    renderStats();
+    renderInvList();
+    renderConfTable();
+    renderMenuSummary();
+    loadDonaciones();
+  } catch(e) {
+    toast('Error al cargar datos');
+    console.error(e);
+  }
+}
+
+/* =============================================
+   STATS
+============================================= */
+function renderStats() {
+  const tot   = allGuests.length;
+  const conf  = allGuests.filter(g => g.confirmado === true).length;
+  const dec   = allGuests.filter(g => g.confirmado === false).length;
+  const pend  = allGuests.filter(g => g.confirmado === null).length;
+  document.getElementById('sTot').textContent    = tot;
+  document.getElementById('sConf').textContent   = conf;
+  document.getElementById('sDec').textContent    = dec;
+  document.getElementById('sPend').textContent   = pend;
+  document.getElementById('sGrupos').textContent = allInvs.length;
+}
+
+function renderMenuSummary() {
+  const confirmed = allGuests.filter(g => g.confirmado === true);
+
+  const entradaCounts = {
+    bouquet:  confirmed.filter(g => g.entrada === 'bouquet').length,
+    ensalada: confirmed.filter(g => g.entrada === 'ensalada').length,
+  };
+  const platoCounts = {
+    ave:    confirmed.filter(g => g.plato_fondo === 'ave').length,
+    vacuno: confirmed.filter(g => g.plato_fondo === 'vacuno').length,
+  };
+
+  document.getElementById('menuEntrada').innerHTML = menuBar([
+    { label: 'Bouquet de hojas', count: entradaCounts.bouquet,  total: confirmed.length },
+    { label: 'Ensalada tibia',   count: entradaCounts.ensalada, total: confirmed.length },
+  ]);
+  document.getElementById('menuPlato').innerHTML = menuBar([
+    { label: 'Ballotine de ave', count: platoCounts.ave,    total: confirmed.length },
+    { label: 'Vacuno braseado',  count: platoCounts.vacuno, total: confirmed.length },
+  ]);
+}
+
+function menuBar(items) {
+  return items.map(it => {
+    const pct = it.total > 0 ? Math.round(it.count / it.total * 100) : 0;
+    return `
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:.85rem;color:var(--ink);">${it.label}</span>
+          <span style="font-size:.82rem;color:var(--gold);font-weight:500;">${it.count} <span style="color:var(--ink-light);font-weight:400;">(${pct}%)</span></span>
+        </div>
+        <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pct}%;background:var(--gold);border-radius:3px;transition:width .5s;"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+/* =============================================
+   INVITATIONS LIST
+============================================= */
+function renderInvList() {
+  const container = document.getElementById('invList');
+  if (!allInvs.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">🎌</div>No hay invitaciones aún. Crea la primera arriba.</div>';
+    return;
+  }
+  container.innerHTML = allInvs.map(inv => {
+    const guests = allGuests.filter(g => g.codigo === inv.codigo);
+    const conf   = guests.filter(g => g.confirmado === true).length;
+    const dec    = guests.filter(g => g.confirmado === false).length;
+    const pend   = guests.filter(g => g.confirmado === null).length;
+    const n      = guests.length;
+    const typeBadge = n <= 1
+      ? `<span class="inv-type-badge badge-individual">Individual</span>`
+      : `<span class="inv-type-badge badge-grupo">Grupo (${n} personas)</span>`;
+    const tipoBadge = inv.tipo === 'fiesta'
+      ? `<span class="inv-type-badge badge-fiesta">🎉 Solo fiesta</span>`
+      : `<span class="inv-type-badge badge-completa">🍽️ Experiencia completa</span>`;
+
+    // Existing photos
+    const fotos = Array.isArray(inv.fotos) ? inv.fotos : [];
+    const thumbsHTML = fotos.length
+      ? `<div class="photo-thumbs" id="thumbs-${inv.codigo}">${fotos.map((url,i) =>
+          `<div class="photo-thumb">
+            <a href="${escHtml(url)}" target="_blank"><img src="${escHtml(url)}" alt="foto"/></a>
+            <button class="photo-thumb-rm" title="Eliminar foto" onclick="removeInvPhoto('${inv.codigo}',${i})">✕</button>
+          </div>`).join('')}</div>`
+      : `<div id="thumbs-${inv.codigo}"></div>`;
+
+    return `
+      <div class="inv-item" id="inv-${inv.codigo}">
+        <div class="inv-item-head" onclick="toggleInv('${inv.codigo}')">
+          <span class="inv-code" title="Copiar código" onclick="event.stopPropagation();navigator.clipboard.writeText('${inv.codigo}').then(()=>toast('Código copiado: ${inv.codigo}'))" style="cursor:pointer;">${inv.codigo}</span><a href="${window.location.origin}/?codigo=${inv.codigo}" target="_blank" onclick="event.stopPropagation()" title="Ver invitación" style="color:var(--gold);text-decoration:none;font-size:.85rem;margin-left:5px;opacity:.7;vertical-align:middle;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'">↗</a>
+          <span class="inv-group-name" id="grpnm-${inv.codigo}">${escHtml(inv.nombre_grupo)}</span>
+          <button class="btn btn-ghost btn-sm" id="grpne-${inv.codigo}" style="padding:2px 6px;font-size:.75rem;flex-shrink:0;" title="Editar nombre de grupo" onclick="event.stopPropagation();editGrupo('${inv.codigo}')">✏️</button>
+          <input id="grpni-${inv.codigo}" style="display:none;width:140px;padding:4px 8px;border:1.5px solid var(--gold);border-radius:6px;font-size:.85rem;font-family:'DM Sans',sans-serif;" value="${escHtml(inv.nombre_grupo)}" onkeydown="if(event.key==='Enter')saveGrupo('${inv.codigo}');if(event.key==='Escape')cancelGrupo('${inv.codigo}')" onclick="event.stopPropagation()">
+          <button class="btn btn-gold btn-sm" id="grpns-${inv.codigo}" style="display:none;flex-shrink:0;" onclick="event.stopPropagation();saveGrupo('${inv.codigo}')">✓</button>
+          <button class="btn btn-ghost btn-sm" id="grpnc-${inv.codigo}" style="display:none;flex-shrink:0;" onclick="event.stopPropagation();cancelGrupo('${inv.codigo}')">✕</button>
+          ${typeBadge}
+          ${tipoBadge}
+          <div class="inv-progress">
+            ${conf  ? `<span class="pip green"></span>${conf} sí` : ''}
+            ${dec   ? `<span class="pip red" style="margin-left:6px;"></span>${dec} no` : ''}
+            ${pend  ? `<span class="pip yellow" style="margin-left:6px;"></span>${pend} pend.` : ''}
+            ${!guests.length ? '<span style="color:var(--ink-light);">sin invitados</span>' : ''}
+          </div>
+          <span style="font-size:.75rem;white-space:nowrap;${fotos.length ? 'color:#2ecc71;font-weight:600;' : 'color:var(--ink-light);opacity:.55;'}" title="${fotos.length ? fotos.length + ' foto(s) cargada(s)' : 'Sin fotos'}">
+            📷 ${fotos.length ? fotos.length : '—'}
+          </span>
+          <span class="badge-enviada ${inv.enviada ? 'sent' : 'unsent'}" id="env-badge-${inv.codigo}"
+            title="${inv.enviada ? 'Marcar como no enviada' : 'Marcar como enviada'}"
+            onclick="event.stopPropagation();toggleEnviada('${inv.codigo}',${!!inv.enviada})">
+            ${inv.enviada ? '✅ Enviada' : '📤 Sin enviar'}
+          </span>
+          <span class="inv-chevron">▼</span>
+        </div>
+        <div class="inv-item-body">
+          <div class="inv-message-preview" id="msg-preview-${inv.codigo}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+            <span id="msg-text-${inv.codigo}" style="flex:1;">"${escHtml(inv.mensaje)}"</span>
+            <button class="btn btn-ghost btn-sm" style="flex-shrink:0;margin-top:-2px;" onclick="editMensaje('${inv.codigo}')">✏️ Editar</button>
+          </div>
+          <div id="msg-edit-${inv.codigo}" style="display:none;margin-bottom:14px;">
+            <textarea id="msg-ta-${inv.codigo}" style="width:100%;min-height:80px;padding:10px;border:1.5px solid var(--gold);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:.88rem;line-height:1.6;resize:vertical;">${escHtml(inv.mensaje)}</textarea>
+            <div style="display:flex;gap:8px;margin-top:8px;">
+              <button class="btn btn-gold btn-sm" onclick="saveMensaje('${inv.codigo}')">Guardar</button>
+              <button class="btn btn-ghost btn-sm" onclick="cancelMensaje('${inv.codigo}')">Cancelar</button>
+            </div>
+          </div>
+          <div class="guest-list" id="gl-${inv.codigo}">
+            ${guests.length
+              ? guests.map((g, idx) => guestRowHTML(g, idx, guests.length)).join('')
+              : '<div style="color:var(--ink-light);font-size:.85rem;">Sin invitados todavía.</div>'
+            }
+          </div>
+          <div style="margin-top:10px;">
+            <p style="font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-light);margin-bottom:6px;">Añadir persona a esta invitación</p>
+            <div class="add-guest-row">
+              <input class="add-guest-input" id="newGuest-${inv.codigo}" placeholder="Nombre completo"
+                onkeydown="if(event.key==='Enter') addGuest('${inv.codigo}')"/>
+              <button class="btn btn-gold btn-sm" onclick="addGuest('${inv.codigo}')">+ Añadir</button>
+            </div>
+          </div>
+          <!-- Photos in detail -->
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">
+            <p style="font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-light);margin-bottom:8px;">Fotos</p>
+            <div id="thumbs-${inv.codigo}">${fotos.length ? fotos.map((url,i) => `
+              <div class="photo-thumb" id="thumb-${inv.codigo}-${i}">
+                <a href="${escHtml(url)}" target="_blank"><img src="${escHtml(url)}" alt="foto"/></a>
+                <button class="photo-thumb-rm" title="Eliminar foto" onclick="removeInvPhoto('${inv.codigo}',${i})">✕</button>
+              </div>`).join('') : ''}</div>
+            <input type="file" id="photoFile-${inv.codigo}" accept=".jpg,.jpeg,.png" style="display:none" onchange="uploadInvPhoto('${inv.codigo}', this)">
+            <div id="photoProgress-${inv.codigo}" class="photo-upload-progress" style="display:none;">
+              <div class="spinner"></div> Subiendo foto…
+            </div>
+            <button class="btn-upload-photo" onclick="document.getElementById('photoFile-${inv.codigo}').click()">
+              📷 Subir foto
+            </button>
+          </div>
+          <div class="inv-actions">
+            <button class="btn btn-danger btn-sm" onclick="deleteInvitation('${inv.codigo}')">🗑 Eliminar invitación</button>
+            <span style="flex:1;"></span>
+            <span style="font-size:.75rem;color:var(--ink-light);">
+              Link: <code style="background:var(--border);padding:2px 7px;border-radius:4px;font-size:.75rem;">?codigo=${inv.codigo}</code>
+            </span>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function guestRowHTML(g, idx = 0, total = 1) {
+  const statusMap = {
+    true:  ['badge-confirmed','Confirmado ✓'],
+    false: ['badge-declined','Declinó ✗'],
+    null:  ['badge-pending','Pendiente'],
+  };
+  const [cls, lbl] = statusMap[g.confirmado] ?? statusMap[null];
+  const isNino = g.es_nino === true;
+  const menuInfo = isNino
+    ? `<span class="menu-chip" style="background:#dbeafe;color:#1d4ed8;">🧒 Menú niños</span>`
+    : g.confirmado === true
+      ? `<span class="menu-chip">${g.entrada === 'bouquet' ? 'Bouquet' : g.entrada === 'ensalada' ? 'Ensalada' : '—'}</span>
+         <span class="menu-chip" style="margin-left:4px;">${g.plato_fondo === 'ave' ? 'Ave' : g.plato_fondo === 'vacuno' ? 'Vacuno' : '—'}</span>`
+      : '';
+  const ninoBtn = `<button class="btn btn-sm btn-ghost" style="font-size:.7rem;padding:3px 8px;" title="${isNino ? 'Marcar como adulto' : 'Marcar como niño'}" onclick="toggleNino('${g.id}','${g.codigo}',${isNino})">${isNino ? '🧒 Niño' : '👤 Adulto'}</button>`;
+  const orderBtns = total > 1 ? `
+    <div style="display:flex;flex-direction:column;gap:2px;margin-left:auto;">
+      <button class="car-order-btn" style="width:22px;height:22px;font-size:.7rem;" ${idx === 0 ? 'disabled' : ''} onclick="moveGuest('${g.id}','${g.codigo}',-1)" title="Subir">↑</button>
+      <button class="car-order-btn" style="width:22px;height:22px;font-size:.7rem;" ${idx === total - 1 ? 'disabled' : ''} onclick="moveGuest('${g.id}','${g.codigo}',1)" title="Bajar">↓</button>
+    </div>` : '';
+  return `
+    <div class="guest-row" id="gr-${g.id}">
+      <span class="guest-row-name" id="gnm-${g.id}">${escHtml(g.nombre)}</span>
+      <button class="btn btn-ghost btn-sm" id="gne-${g.id}" style="padding:2px 6px;font-size:.75rem;" title="Editar nombre" onclick="editNombre('${g.id}')">✏️</button>
+      <input id="gni-${g.id}" style="display:none;flex:1;padding:4px 8px;border:1.5px solid var(--gold);border-radius:6px;font-size:.85rem;font-family:'DM Sans',sans-serif;" value="${escHtml(g.nombre)}" onkeydown="if(event.key==='Enter')saveNombre('${g.id}');if(event.key==='Escape')cancelNombre('${g.id}')">
+      <button class="btn btn-gold btn-sm" id="gns-${g.id}" style="display:none;" onclick="saveNombre('${g.id}')">✓</button>
+      <button class="btn btn-ghost btn-sm" id="gnc-${g.id}" style="display:none;" onclick="cancelNombre('${g.id}')">✕</button>
+      ${ninoBtn}
+      ${menuInfo}
+      <span class="status-badge ${cls}">${lbl}</span>
+      ${orderBtns}
+      <button class="btn btn-danger btn-icon" title="Eliminar" onclick="deleteGuest('${g.id}','${g.codigo}')">✕</button>
+    </div>`;
+}
+
+function toggleInv(code) {
+  const el = document.getElementById('inv-' + code);
+  el.classList.toggle('expanded');
+}
+
+/* =============================================
+   FORM HELPERS
+============================================= */
+function onInvTypeChange() {
+  const isInd = document.getElementById('typeIndividual').checked;
+  document.getElementById('fInvitadosIndividualWrap').style.display = isInd ? ''     : 'none';
+  document.getElementById('fGrupoWrap').style.display               = isInd ? 'none' : '';
+  document.getElementById('fInvitadosGrupalWrap').style.display     = isInd ? 'none' : '';
+  // Clear fields on toggle
+  document.getElementById('fInvitadoSingle').value = '';
+  document.getElementById('fGrupo').value = '';
+  document.getElementById('fInvitados').value = '';
+}
+
+/* no-op: photos added after creation */
+
+/* =============================================
+   CREATE INVITATION
+============================================= */
+async function createInvitation() {
+  const isInd  = document.getElementById('typeIndividual').checked;
+  const single = document.getElementById('fInvitadoSingle').value.trim();
+  const grupo  = document.getElementById('fGrupo').value.trim();
+  const mensaje = document.getElementById('fMensaje').value.trim();
+
+  // nombre_grupo: para individual es el nombre de la persona; para grupal es el nombre del grupo
+  const nombreGrupo = isInd ? single : grupo;
+
+  let names = [];
+  if (isInd) {
+    if (!single) { toast('Escribe el nombre del invitado'); return; }
+    names = [single];
+  } else {
+    if (!grupo) { toast('Escribe el nombre del grupo'); return; }
+    const rawNames = document.getElementById('fInvitados').value.trim();
+    names = rawNames.split('\n').map(n => n.trim()).filter(Boolean);
+  }
+
+  if (!mensaje) { toast('Escribe un mensaje personalizado'); return; }
+
+  // Auto-generate code from name
+  const codigo = genCode(nombreGrupo);
+  const fotos = [];
+
+  const btn = document.getElementById('btnCreate');
+  const status = document.getElementById('createStatus');
+  btn.disabled = true;
+  status.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    // Insert invitation (with fotos array)
+    const tipo = document.getElementById('tipoCompleta').checked ? 'completa' : 'fiesta';
+    const { error: ie } = await sb.from('invitaciones').insert({ codigo, nombre_grupo: nombreGrupo, mensaje, fotos, tipo });
+    if (ie) throw ie;
+
+    // Insert guests
+    if (names.length) {
+      const rows = names.map(nombre => ({ codigo, nombre }));
+      const { error: ge } = await sb.from('invitados').insert(rows);
+      if (ge) throw ge;
+    }
+
+    // Clear form
+    ['fGrupo','fMensaje','fInvitados','fInvitadoSingle'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    /* photos are managed post-creation */
+    toast('Invitación creada ✓');
+    await loadAll();
+    // Auto-open the new invitation
+    setTimeout(() => {
+      const el = document.getElementById('inv-' + codigo);
+      if (el) { el.classList.add('expanded'); el.scrollIntoView({ behavior:'smooth', block:'center' }); }
+    }, 400);
+  } catch(e) {
+    toast('Error: ' + (e.message || JSON.stringify(e)));
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    status.innerHTML = '';
+  }
+}
+
+function normalize(str) {
+  return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+function genCode(nombre) {
+  const initials = normalize(nombre)
+    .split(' ')
+    .filter(w => /^[a-zA-Z]/.test(w))
+    .slice(0, 3)
+    .map(w => w[0])
+    .join('').toUpperCase() || 'INV';
+  const suffix = String(new Date().getFullYear()).slice(-2) + String(Date.now()).slice(-3);
+  return `${initials}-${suffix}`;
+}
+
+function autoGenCode() {
+  // Show preview of the code that will be generated
+  const isInd = document.getElementById('typeIndividual').checked;
+  const nombre = isInd
+    ? document.getElementById('fInvitadoSingle').value.trim()
+    : document.getElementById('fGrupo').value.trim();
+  const status = document.getElementById('createStatus');
+  if (nombre) {
+    status.textContent = 'Código: ' + genCode(nombre);
+    status.style.color = 'var(--gold)';
+  } else {
+    status.textContent = '';
+  }
+}
+
+/* =============================================
+   PHOTO MANAGEMENT (existing invitations)
+============================================= */
+async function uploadInvPhoto(codigo, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext  = file.name.split('.').pop().toLowerCase();
+  const path = `${codigo}/${Date.now()}.${ext}`;
+  const prog = document.getElementById('photoProgress-' + codigo);
+  if (prog) prog.style.display = 'flex';
+  try {
+    const { error: upErr } = await sb.storage.from('fotos-boda').upload(path, file, { contentType: file.type, upsert: false });
+    if (upErr) throw upErr;
+    const { data } = sb.storage.from('fotos-boda').getPublicUrl(path);
+    const url = data.publicUrl;
+    const inv   = allInvs.find(i => i.codigo === codigo);
+    const fotos = Array.isArray(inv?.fotos) ? [...inv.fotos, url] : [url];
+    const { error } = await sb.from('invitaciones').update({ fotos }).eq('codigo', codigo);
+    if (error) throw error;
+    input.value = '';
+    toast('Foto subida ✓');
+    await loadAll();
+    const el = document.getElementById('inv-' + codigo);
+    if (el) el.classList.add('expanded');
+  } catch(e) {
+    toast('Error al subir: ' + (e.message || ''));
+  } finally {
+    if (prog) prog.style.display = 'none';
+  }
+}
+
+async function removeInvPhoto(codigo, index) {
+  const inv   = allInvs.find(i => i.codigo === codigo);
+  const fotos = Array.isArray(inv?.fotos) ? [...inv.fotos] : [];
+  const url   = fotos[index];
+  // Borrar del storage si la URL pertenece a Supabase Storage
+  const prefix = `${SUPABASE_URL}/storage/v1/object/public/fotos-boda/`;
+  if (url && url.startsWith(prefix)) {
+    const storagePath = decodeURIComponent(url.replace(prefix, ''));
+    await sb.storage.from('fotos-boda').remove([storagePath]);
+  }
+  const newFotos = fotos.filter((_, i) => i !== index);
+  try {
+    const { error } = await sb.from('invitaciones').update({ fotos: newFotos }).eq('codigo', codigo);
+    if (error) throw error;
+    toast('Foto eliminada ✓');
+    await loadAll();
+    const el = document.getElementById('inv-' + codigo);
+    if (el) el.classList.add('expanded');
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   EDITAR NOMBRE GRUPO INVITACIÓN
+============================================= */
+function editGrupo(codigo) {
+  document.getElementById('grpnm-' + codigo).style.display = 'none';
+  document.getElementById('grpne-' + codigo).style.display = 'none';
+  document.getElementById('grpni-' + codigo).style.display = '';
+  document.getElementById('grpns-' + codigo).style.display = '';
+  document.getElementById('grpnc-' + codigo).style.display = '';
+  document.getElementById('grpni-' + codigo).focus();
+}
+function cancelGrupo(codigo) {
+  document.getElementById('grpnm-' + codigo).style.display = '';
+  document.getElementById('grpne-' + codigo).style.display = '';
+  document.getElementById('grpni-' + codigo).style.display = 'none';
+  document.getElementById('grpns-' + codigo).style.display = 'none';
+  document.getElementById('grpnc-' + codigo).style.display = 'none';
+}
+async function saveGrupo(codigo) {
+  const input = document.getElementById('grpni-' + codigo);
+  const nombre = input.value.trim();
+  if (!nombre) { toast('El nombre no puede estar vacío'); return; }
+  try {
+    const { error } = await sb.from('invitaciones').update({ nombre_grupo: nombre }).eq('codigo', codigo);
+    if (error) throw error;
+    document.getElementById('grpnm-' + codigo).textContent = nombre;
+    const inv = allInvs.find(i => i.codigo === codigo);
+    if (inv) inv.nombre_grupo = nombre;
+    cancelGrupo(codigo);
+    toast('Nombre de grupo actualizado ✓');
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   TOGGLE ENVIADA
+============================================= */
+async function toggleEnviada(codigo, currentVal) {
+  const newVal = !currentVal;
+  try {
+    const { error } = await sb.from('invitaciones').update({ enviada: newVal }).eq('codigo', codigo);
+    if (error) throw error;
+    // Actualizar local
+    const inv = allInvs.find(i => i.codigo === codigo);
+    if (inv) inv.enviada = newVal;
+    // Actualizar badge sin recargar
+    const badge = document.getElementById('env-badge-' + codigo);
+    if (badge) {
+      badge.className = `badge-enviada ${newVal ? 'sent' : 'unsent'}`;
+      badge.title     = newVal ? 'Marcar como no enviada' : 'Marcar como enviada';
+      badge.innerHTML = newVal ? '✅ Enviada' : '📤 Sin enviar';
+      badge.setAttribute('onclick', `event.stopPropagation();toggleEnviada('${codigo}',${newVal})`);
+    }
+    toast(newVal ? '✅ Marcada como enviada' : '📤 Marcada como sin enviar');
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   EDITAR NOMBRE INVITADO
+============================================= */
+function editNombre(id) {
+  document.getElementById('gnm-' + id).style.display = 'none';
+  document.getElementById('gne-' + id).style.display = 'none';
+  document.getElementById('gni-' + id).style.display = '';
+  document.getElementById('gns-' + id).style.display = '';
+  document.getElementById('gnc-' + id).style.display = '';
+  document.getElementById('gni-' + id).focus();
+}
+function cancelNombre(id) {
+  document.getElementById('gnm-' + id).style.display = '';
+  document.getElementById('gne-' + id).style.display = '';
+  document.getElementById('gni-' + id).style.display = 'none';
+  document.getElementById('gns-' + id).style.display = 'none';
+  document.getElementById('gnc-' + id).style.display = 'none';
+}
+async function saveNombre(id) {
+  const input = document.getElementById('gni-' + id);
+  const nombre = input.value.trim();
+  if (!nombre) { toast('El nombre no puede estar vacío'); return; }
+  try {
+    const { error } = await sb.from('invitados').update({ nombre }).eq('id', id);
+    if (error) throw error;
+    document.getElementById('gnm-' + id).textContent = nombre;
+    // Actualizar en allGuests local
+    const g = allGuests.find(g => g.id === id);
+    if (g) g.nombre = nombre;
+    cancelNombre(id);
+    toast('Nombre actualizado ✓');
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   EDITAR MENSAJE INVITACIÓN
+============================================= */
+function editMensaje(codigo) {
+  document.getElementById('msg-preview-' + codigo).style.display = 'none';
+  document.getElementById('msg-edit-' + codigo).style.display = 'block';
+  document.getElementById('msg-ta-' + codigo).focus();
+}
+function cancelMensaje(codigo) {
+  document.getElementById('msg-preview-' + codigo).style.display = 'flex';
+  document.getElementById('msg-edit-' + codigo).style.display = 'none';
+}
+async function saveMensaje(codigo) {
+  const ta  = document.getElementById('msg-ta-' + codigo);
+  const msg = ta.value.trim();
+  if (!msg) { toast('El mensaje no puede estar vacío'); return; }
+  try {
+    const { error } = await sb.from('invitaciones').update({ mensaje: msg }).eq('codigo', codigo);
+    if (error) throw error;
+    document.getElementById('msg-text-' + codigo).textContent = `"${msg}"`;
+    cancelMensaje(codigo);
+    toast('Mensaje actualizado ✓');
+    // Actualizar en allInvs local
+    const inv = allInvs.find(i => i.codigo === codigo);
+    if (inv) inv.mensaje = msg;
+  } catch(e) { toast('Error: ' + (e.message || '')); }
+}
+
+/* =============================================
+   ADD GUEST
+============================================= */
+async function addGuest(codigo) {
+  const input = document.getElementById('newGuest-' + codigo);
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  input.disabled = true;
+  try {
+    const { error } = await sb.from('invitados').insert({ codigo, nombre });
+    if (error) throw error;
+    input.value = '';
+    toast(`${nombre} agregado ✓`);
+    await loadAll();
+    // Keep the card expanded
+    const el = document.getElementById('inv-' + codigo);
+    if (el && !el.classList.contains('expanded')) el.classList.add('expanded');
+  } catch(e) {
+    toast('Error al agregar: ' + (e.message || ''));
+  } finally {
+    input.disabled = false;
+    input.focus();
+  }
+}
+
+/* =============================================
+   DELETE GUEST
+============================================= */
+async function deleteGuest(id, codigo) {
+  if (!confirm('¿Eliminar este invitado?')) return;
+  try {
+    const { error } = await sb.from('invitados').delete().eq('id', id);
+    if (error) throw error;
+    toast('Invitado eliminado');
+    await loadAll();
+    const el = document.getElementById('inv-' + codigo);
+    if (el) el.classList.add('expanded');
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+async function moveGuest(guestId, codigo, dir) {
+  // Encontrar posiciones en allGuests global
+  const groupIndices = allGuests.reduce((acc, g, i) => {
+    if (g.codigo === codigo) acc.push(i);
+    return acc;
+  }, []);
+
+  const posInGroup = groupIndices.findIndex(i => allGuests[i].id === guestId);
+  const swapPos    = posInGroup + dir;
+  if (posInGroup < 0 || swapPos < 0 || swapPos >= groupIndices.length) return;
+
+  const idxA = groupIndices[posInGroup];
+  const idxB = groupIndices[swapPos];
+
+  // Swap inmediato en el array local
+  [allGuests[idxA], allGuests[idxB]] = [allGuests[idxB], allGuests[idxA]];
+
+  // Re-renderizar solo la lista de esta invitación
+  const groupGuests = groupIndices.map(i => allGuests[i]);
+  const glEl = document.getElementById('gl-' + codigo);
+  if (glEl) {
+    glEl.innerHTML = groupGuests.map((g, i) => guestRowHTML(g, i, groupGuests.length)).join('');
+  }
+
+  // Guardar en BD con orden secuencial
+  try {
+    await Promise.all(groupGuests.map((g, i) =>
+      sb.from('invitados').update({ orden: i }).eq('id', g.id)
+    ));
+  } catch(e) { toast('Error al guardar orden: ' + (e.message || '')); }
+}
+
+async function toggleNino(guestId, codigo, currentVal) {
+  try {
+    const { error } = await sb.from('invitados').update({ es_nino: !currentVal }).eq('id', guestId);
+    if (error) throw error;
+    toast((!currentVal ? '🧒 Marcado como niño' : '👤 Marcado como adulto') + ' ✓');
+    await loadAll();
+    const el = document.getElementById('inv-' + codigo);
+    if (el && !el.classList.contains('expanded')) el.classList.add('expanded');
+  } catch(e) { toast('Error: ' + (e.message || '')); }
+}
+
+/* =============================================
+   DELETE INVITATION
+============================================= */
+async function deleteInvitation(codigo) {
+  const inv = allInvs.find(i => i.codigo === codigo);
+  if (!confirm(`¿Eliminar la invitación de "${inv?.nombre_grupo}" y todos sus invitados?`)) return;
+  try {
+    // guests cascade on DB, but let's be explicit
+    await sb.from('invitados').delete().eq('codigo', codigo);
+    const { error } = await sb.from('invitaciones').delete().eq('codigo', codigo);
+    if (error) throw error;
+    toast('Invitación eliminada');
+    await loadAll();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   CONFIRMATIONS TABLE
+============================================= */
+function setFilter(filter, btn) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderConfTable();
+}
+
+function renderConfTable() {
+  const statusMap = {
+    true:  ['badge-confirmed','Confirmado ✓'],
+    false: ['badge-declined','Declinó ✗'],
+    null:  ['badge-pending','Pendiente ⏳'],
+  };
+  const entradaLabel = { bouquet:'Bouquet de hojas verdes', ensalada:'Ensalada tibia' };
+  const platoLabel   = { ave:'Ballotine de ave', vacuno:'Vacuno braseado' };
+
+  const rows = allGuests.map(g => {
+    const inv = allInvs.find(i => i.codigo === g.codigo);
+    return { ...g, grupo: inv?.nombre_grupo || g.codigo, tipo: inv?.tipo || 'completa' };
+  });
+
+  const applyFilter = arr => arr.filter(g => {
+    if (activeFilter === 'confirmed') return g.confirmado === true;
+    if (activeFilter === 'declined')  return g.confirmado === false;
+    if (activeFilter === 'pending')   return g.confirmado === null;
+    return true;
+  });
+
+  const completa = applyFilter(rows.filter(g => g.tipo !== 'fiesta'));
+  const fiesta   = applyFilter(rows.filter(g => g.tipo === 'fiesta'));
+
+  // Contador en header
+  document.getElementById('countCompleta').textContent = `${completa.length} personas`;
+  document.getElementById('countFiesta').textContent   = `${fiesta.length} personas`;
+
+  // Tabla experiencia completa
+  const tbCompleta = document.getElementById('confTableCompleta');
+  tbCompleta.innerHTML = completa.length
+    ? completa.map(g => {
+        const [cls, lbl] = statusMap[g.confirmado] ?? statusMap[null];
+        const dressingNote = g.entrada === 'bouquet' ? (g.dressing !== false ? ' · c/dressing' : ' · s/dressing') : '';
+        return `<tr>
+          <td style="font-weight:500;">${escHtml(g.nombre)}</td>
+          <td style="color:var(--ink-mid);">${escHtml(g.grupo)}</td>
+          <td><span class="status-badge ${cls}">${lbl}</span></td>
+          <td>${g.entrada ? `<span class="menu-chip">${entradaLabel[g.entrada] || g.entrada}${dressingNote}</span>` : '<span style="color:var(--border)">—</span>'}</td>
+          <td>${g.plato_fondo ? `<span class="menu-chip">${platoLabel[g.plato_fondo] || g.plato_fondo}</span>` : '<span style="color:var(--border)">—</span>'}</td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🌸</div>Sin resultados.</div></td></tr>`;
+
+  // Tabla solo fiesta
+  const tbFiesta = document.getElementById('confTableFiesta');
+  tbFiesta.innerHTML = fiesta.length
+    ? fiesta.map(g => {
+        const [cls, lbl] = statusMap[g.confirmado] ?? statusMap[null];
+        return `<tr>
+          <td style="font-weight:500;">${escHtml(g.nombre)}</td>
+          <td style="color:var(--ink-mid);">${escHtml(g.grupo)}</td>
+          <td><span class="status-badge ${cls}">${lbl}</span></td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="3"><div class="empty"><div class="empty-icon">🎉</div>Sin resultados.</div></td></tr>`;
+}
+
+/* =============================================
+   EXPORT CSV
+============================================= */
+function exportCSV() {
+  const rows = allGuests.map(g => {
+    const inv  = allInvs.find(i => i.codigo === g.codigo);
+    const tipo = inv?.tipo || 'completa';
+    const dressingVal = tipo === 'completa' && g.entrada === 'bouquet'
+      ? (g.dressing === false ? 'Sin dressing' : 'Con dressing')
+      : '';
+    return {
+      nombre:      g.nombre,
+      grupo:       inv?.nombre_grupo || g.codigo,
+      codigo:      g.codigo,
+      tipo:        tipo === 'fiesta' ? 'Solo fiesta' : 'Experiencia completa',
+      confirmado:  g.confirmado === true ? 'Sí' : g.confirmado === false ? 'No' : 'Pendiente',
+      entrada:     tipo === 'completa' ? (g.entrada || '') : '',
+      plato_fondo: tipo === 'completa' ? (g.plato_fondo || '') : '',
+      dressing:    dressingVal,
+    };
+  });
+  const headers = ['Nombre','Grupo','Código','Tipo','Confirmado','Entrada','Plato de fondo','Dressing'];
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => Object.values(r).map(v => `"${v}"`).join(',')),
+  ].join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'boda-confirmaciones.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('CSV descargado ✓');
+}
+
+/* =============================================
+   HELPERS
+============================================= */
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtCLP(n) {
+  return '$' + Number(n).toLocaleString('es-CL');
+}
+
+/* =============================================
+   EXPERIENCIAS
+============================================= */
+const MIGRATION_SQL = `CREATE TABLE IF NOT EXISTS experiencias (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  nombre text NOT NULL,
+  descripcion text DEFAULT '',
+  precio int NOT NULL DEFAULT 0,
+  emoji text DEFAULT '✨',
+  foto_url text,
+  orden int DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE experiencias ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "public read experiencias" ON experiencias;
+CREATE POLICY "public read experiencias" ON experiencias FOR SELECT USING (true);`;
+
+let allExp = [];
+
+async function loadExperiencias() {
+  const grid = document.getElementById('expGrid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div>Cargando…</div>';
+  try {
+    const { data, error } = await sb.from('experiencias').select('*').order('orden').order('created_at');
+    if (error) {
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        // Tabla no existe — mostrar banner de setup
+        document.getElementById('expSetupBanner').style.display = 'block';
+        document.getElementById('expSetupSQL').textContent = MIGRATION_SQL;
+        grid.innerHTML = '<div class="empty"><div class="empty-icon">⚙️</div>Sigue las instrucciones de configuración arriba.</div>';
+      } else throw error;
+      return;
+    }
+    document.getElementById('expSetupBanner').style.display = 'none';
+    allExp = data || [];
+    renderExperiencias();
+  } catch(e) {
+    grid.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderExperiencias() {
+  const grid = document.getElementById('expGrid');
+  if (!grid) return;
+  if (!allExp.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">⭐</div>No hay experiencias todavía. ¡Crea la primera!</div>';
+    return;
+  }
+  // Calcular fondos recaudados por experiencia desde allDon
+  const fundedByExp = {};
+  allDon.forEach(d => {
+    if (!Array.isArray(d.items) || !d.pagado) return;
+    d.items.forEach(entry => {
+      if (!entry?.item_id) return;
+      fundedByExp[entry.item_id] = (fundedByExp[entry.item_id] || 0) + (entry.pct || 0);
+    });
+  });
+
+  grid.innerHTML = allExp.map(exp => {
+    const funded = Math.min(100, fundedByExp[exp.id] || 0);
+    const imgHtml = exp.foto_url
+      ? `<div class="exp-card-img"><img src="${escHtml(exp.foto_url)}" alt="${escHtml(exp.nombre)}"></div>`
+      : `<div class="exp-card-img">${escHtml(exp.emoji || '✨')}</div>`;
+    return `
+      <div class="exp-card">
+        ${imgHtml}
+        <div class="exp-card-body">
+          <div class="exp-card-name">${escHtml(exp.emoji || '')} ${escHtml(exp.nombre)}</div>
+          ${exp.descripcion ? `<div class="exp-card-desc">${escHtml(exp.descripcion)}</div>` : ''}
+          <div class="exp-card-price">${fmtCLP(exp.precio)}</div>
+        </div>
+        <div class="exp-card-footer">
+          <div class="exp-progress-wrap" title="${funded}% financiado">
+            <div class="exp-progress-bar" style="width:${funded}%"></div>
+          </div>
+          <span class="exp-pct-label">${funded}%</span>
+          <label class="btn btn-ghost btn-sm" title="Cambiar foto" style="cursor:pointer;margin-bottom:0;">
+            📷
+            <input type="file" accept="image/*" style="display:none;" onchange="updateExpFoto('${exp.id}', this)">
+          </label>
+          <button class="btn btn-danger btn-sm" onclick="deleteExperiencia('${exp.id}')">🗑</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function handleExpPhotoPreview(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const preview = document.getElementById('ePhotoPreview');
+  const nameEl  = document.getElementById('ePhotoName');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+  nameEl.textContent = file.name;
+}
+
+async function createExperiencia() {
+  const nombre  = document.getElementById('eNombre').value.trim();
+  const desc    = document.getElementById('eDesc').value.trim();
+  const precio  = parseInt(document.getElementById('ePrecio').value) || 0;
+  const emoji   = document.getElementById('eEmoji').value.trim() || '✨';
+  const fileInput = document.getElementById('eFotoFile');
+  const file    = fileInput.files[0];
+
+  if (!nombre) { toast('Escribe un nombre para la experiencia'); return; }
+  if (!precio)  { toast('Escribe el precio'); return; }
+
+  const btn    = document.getElementById('btnCreateExp');
+  const status = document.getElementById('expCreateStatus');
+  btn.disabled = true;
+  status.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    let foto_url = null;
+
+    // Subir foto si hay
+    if (file) {
+      const ext  = file.name.split('.').pop().toLowerCase();
+      const path = `experiencias/${Date.now()}.${ext}`;
+      const { error: upErr } = await sb.storage.from('fotos-boda').upload(path, file, { contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: urlData } = sb.storage.from('fotos-boda').getPublicUrl(path);
+      foto_url = urlData.publicUrl;
+    }
+
+    const orden = allExp.length; // al final de la lista
+    const { error } = await sb.from('experiencias').insert({ nombre, descripcion: desc, precio, emoji, foto_url, orden });
+    if (error) throw error;
+
+    // Limpiar form
+    ['eNombre','eDesc','ePrecio','eEmoji'].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+    fileInput.value = '';
+    document.getElementById('ePhotoPreview').style.display = 'none';
+    document.getElementById('ePhotoName').textContent = '';
+    toast('Experiencia creada ✓');
+    await loadExperiencias();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  } finally {
+    btn.disabled = false;
+    status.innerHTML = '';
+  }
+}
+
+async function deleteExperiencia(id) {
+  const exp = allExp.find(e => e.id === id);
+  if (!confirm(`¿Eliminar "${exp?.nombre}"?`)) return;
+  try {
+    // Borrar foto del storage si existe
+    if (exp?.foto_url) {
+      const prefix = `${SUPABASE_URL}/storage/v1/object/public/fotos-boda/`;
+      if (exp.foto_url.startsWith(prefix)) {
+        const path = decodeURIComponent(exp.foto_url.replace(prefix, ''));
+        await sb.storage.from('fotos-boda').remove([path]);
+      }
+    }
+    const { error } = await sb.from('experiencias').delete().eq('id', id);
+    if (error) throw error;
+    toast('Experiencia eliminada ✓');
+    await loadExperiencias();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+async function updateExpFoto(id, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const exp = allExp.find(e => e.id === id);
+  toast('Subiendo foto…');
+  try {
+    // Eliminar foto anterior del storage si existe
+    if (exp?.foto_url) {
+      const prefix = `${SUPABASE_URL}/storage/v1/object/public/fotos-boda/`;
+      if (exp.foto_url.startsWith(prefix)) {
+        const oldPath = decodeURIComponent(exp.foto_url.replace(prefix, ''));
+        await sb.storage.from('fotos-boda').remove([oldPath]);
+      }
+    }
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const path = `experiencias/${id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('fotos-boda').upload(path, file, { contentType: file.type, upsert: true });
+    if (upErr) throw upErr;
+    const { data: urlData } = sb.storage.from('fotos-boda').getPublicUrl(path);
+    const { error } = await sb.from('experiencias').update({ foto_url: urlData.publicUrl }).eq('id', id);
+    if (error) throw error;
+    toast('Foto actualizada ✓');
+    await loadExperiencias();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+async function importarExperiencias() {
+  if (!confirm('¿Importar las 37 experiencias? Esto no elimina las existentes.')) return;
+  const items = [{"emoji":"🚄","nombre":"Viaje en tren bala Tokio → Osaka","descripcion":"Recorrer Japón en Shinkansen, una experiencia icónica del viaje.","precio":120000},{"emoji":"🚄","nombre":"Viaje en tren bala Osaka → Tokio","descripcion":"El regreso en Shinkansen disfrutando los paisajes.","precio":120000},{"emoji":"🎫","nombre":"Tarjeta de transporte (Suica/Pasmo)","descripcion":"Nuestros viajes en metro y tren por Japón.","precio":50000},{"emoji":"🚕","nombre":"Taxi nocturno en Tokio","descripcion":"Un regreso cómodo después de un día intenso.","precio":50000},{"emoji":"🍜","nombre":"El ramen que no vamos a olvidar","descripcion":"Un ramen completo con toppings y acompañamientos.","precio":50000},{"emoji":"🍜","nombre":"Ruta de ramen (3 locales)","descripcion":"Probar distintos estilos de ramen en una ciudad.","precio":80000},{"emoji":"🍣","nombre":"Cena especial en Osaka","descripcion":"Una noche para comer sin culpa en la capital gastronómica.","precio":120000},{"emoji":"🍢","nombre":"Street food en Dotonbori","descripcion":"Comer en la calle en uno de los lugares más icónicos.","precio":50000},{"emoji":"☕","nombre":"Desayunos en Japón","descripcion":"Cafecitos, pancakes o combinis salvadores.","precio":50000},{"emoji":"🍶","nombre":"Cena tipo izakaya","descripcion":"Comida japonesa relajada para compartir.","precio":80000},{"emoji":"🏯","nombre":"Entrada a templos en Kioto","descripcion":"Recorrer templos históricos y jardines tradicionales.","precio":50000},{"emoji":"🎋","nombre":"Bosque de bambú en Arashiyama","descripcion":"Caminar por uno de los paisajes más icónicos.","precio":50000},{"emoji":"🏯","nombre":"Día cultural en Kioto","descripcion":"Templos, paseos y cultura japonesa tradicional.","precio":80000},{"emoji":"⛩️","nombre":"Experiencia en santuario japonés","descripcion":"Amuletos, rituales y tradición japonesa.","precio":50000},{"emoji":"🎮","nombre":"Arcades en Akihabara","descripcion":"Jugar y perdernos entre máquinas japonesas.","precio":50000},{"emoji":"🕹️","nombre":"Sesión de juegos de ritmo","descripcion":"Dar todo en máquinas que amamos.","precio":50000},{"emoji":"🛍️","nombre":"Compras frikis","descripcion":"Figuras, cartas y recuerdos únicos.","precio":80000},{"emoji":"👘","nombre":"Experiencia con kimono","descripcion":"Vestirnos tradicionalmente en Kioto.","precio":80000},{"emoji":"♨️","nombre":"Onsen japonés","descripcion":"Relajación total en aguas termales.","precio":80000},{"emoji":"🌃","nombre":"Mirador en Tokio","descripcion":"Vista panorámica de la ciudad iluminada.","precio":50000},{"emoji":"🚶","nombre":"Día sin plan","descripcion":"Explorar Japón sin rumbo y descubrir cosas nuevas.","precio":50000},{"emoji":"🎢","nombre":"Entrada a Universal Studios Japón","descripcion":"Un día completo en uno de los mejores parques del mundo.","precio":120000},{"emoji":"🍄","nombre":"Super Nintendo World","descripcion":"Vivir el mundo de Mario dentro de Universal.","precio":150000},{"emoji":"⚡","nombre":"Express Pass Universal","descripcion":"Evitar filas y aprovechar al máximo el parque.","precio":200000},{"emoji":"🎢","nombre":"Día completo Universal Studios","descripcion":"Entradas, comida y experiencias dentro del parque.","precio":300000},{"emoji":"🏰","nombre":"Tokyo Disneyland / DisneySea","descripcion":"Un día mágico en los parques Disney.","precio":120000},{"emoji":"🌊","nombre":"Tokyo DisneySea (premium)","descripcion":"El parque Disney más único del mundo.","precio":150000},{"emoji":"🗼","nombre":"Shibuya y noche en Tokio","descripcion":"Vivir uno de los lugares más icónicos del mundo.","precio":50000},{"emoji":"🎮","nombre":"Día gamer en Akihabara","descripcion":"Arcades, tiendas y cultura gamer.","precio":80000},{"emoji":"🍽️","nombre":"Cena especial de luna de miel","descripcion":"Una comida más elegante para celebrar.","precio":150000},{"emoji":"🍜","nombre":"Ruta gastronómica en Osaka","descripcion":"Comer sin culpa en la capital culinaria.","precio":120000},{"emoji":"🏯","nombre":"Día completo en Kioto","descripcion":"Templos, comida y paseos en un solo día.","precio":100000},{"emoji":"🏨","nombre":"Hotel especial en Japón","descripcion":"Una noche inolvidable en la luna de miel.","precio":300000},{"emoji":"🛏️","nombre":"Ryokan tradicional","descripcion":"Tatami, cena incluida y experiencia japonesa completa.","precio":500000},{"emoji":"💎","nombre":"Día premium sin límites","descripcion":"Un día disfrutando Japón sin preocuparnos por nada.","precio":300000},{"emoji":"🇯🇵","nombre":"Fondo general luna de miel","descripcion":"Para todo lo inesperado que hará especial el viaje.","precio":1000000}];
+  const rows = items.map((it, i) => ({ emoji: it.emoji, nombre: it.nombre, descripcion: it.descripcion, precio: it.precio, orden: i + 1 }));
+  try {
+    const { error } = await sb.from('experiencias').insert(rows);
+    if (error) throw error;
+    toast(`${rows.length} experiencias importadas ✓`);
+    await loadExperiencias();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   DONACIONES
+============================================= */
+async function loadDonaciones() {
+  try {
+    const [donRes, expRes] = await Promise.all([
+      sb.from('donaciones').select('*').order('created_at', { ascending: false }),
+      sb.from('experiencias').select('*').order('orden').order('created_at'),
+    ]);
+    if (donRes.error) throw donRes.error;
+    allDon = donRes.data || [];
+    if (!expRes.error && expRes.data?.length) allExp = expRes.data;
+    renderDonaciones();
+  } catch(e) {
+    console.error('Error donaciones:', e);
+  }
+}
+
+function renderDonaciones() {
+  const total  = allDon.length;
+  const paid   = allDon.filter(d => d.pagado).length;
+  const pend   = total - paid;
+
+  // Monto confirmado: sum of paid donations
+  let montoConf = 0;
+  allDon.filter(d => d.pagado).forEach(d => { montoConf += Number(d.total_clp || 0); });
+
+  document.getElementById('dTot').textContent   = total;
+  document.getElementById('dPaid').textContent  = paid;
+  document.getElementById('dPend').textContent  = pend;
+  document.getElementById('dMonto').textContent = fmtCLP(montoConf);
+
+  // Item progress
+  const progEl = document.getElementById('donItemProgress');
+  if (!total) {
+    progEl.innerHTML = '<div class="empty"><div class="empty-icon">🌸</div>No hay donaciones todavía.</div>';
+  } else {
+    // Build map: itemId → total % aportado (sum of pct across paid donations)
+    const paidByItem = {};
+    allDon.filter(d => d.pagado).forEach(d => {
+      const items = Array.isArray(d.items) ? d.items : [];
+      items.forEach(entry => {
+        if (!entry?.item_id) return;
+        paidByItem[entry.item_id] = (paidByItem[entry.item_id] || 0) + (Number(entry.pct) || 0);
+      });
+    });
+
+    progEl.innerHTML = allExp.map(item => {
+      const pct = Math.min(100, paidByItem[item.id] || 0);
+      return `
+        <div class="don-item-row">
+          <div class="don-item-header">
+            <span class="don-item-name">${item.emoji || '✨'} ${escHtml(item.nombre)}</span>
+            <span class="don-item-price">${fmtCLP(item.precio)}</span>
+          </div>
+          <div class="don-progress-bar-wrap">
+            <div class="don-progress-bar" style="width:${pct}%;"></div>
+          </div>
+          <span class="don-progress-text">${pct}% de ${fmtCLP(item.precio)} aportado</span>
+        </div>`;
+    }).join('');
+  }
+
+  // Donations table
+  const tbody = document.getElementById('donTableBody');
+  if (!total) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty"><div class="empty-icon">💝</div>Sin donaciones todavía.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = allDon.map(d => {
+    const items  = Array.isArray(d.items) ? d.items : [];
+    const labels = items.map(entry => {
+      if (!entry?.item_id) return String(entry);
+      const it = allExp.find(e => e.id === entry.item_id);
+      return it
+        ? `${it.emoji || '✨'} ${escHtml(it.nombre)} <span style="color:var(--gold);font-weight:600;">${entry.pct}%</span>`
+        : `ID desconocido (${entry.pct}%)`;
+    });
+    const fecha = d.created_at ? new Date(d.created_at).toLocaleDateString('es-CL') : '—';
+    let badgeClass, badgeText, accion;
+    const deleteBtn = `<button class="btn btn-sm" style="color:#c0392b;border-color:#e8b4b0;background:transparent;" onclick="deleteDon('${d.id}', '${escHtml(d.codigo || '')}')">🗑 Eliminar</button>`;
+    if (d.pagado) {
+      badgeClass = 'badge-paid';
+      badgeText  = '✓ Pagado';
+      accion     = deleteBtn;
+    } else if (d.transferido) {
+      badgeClass = 'badge-transferred';
+      badgeText  = '🔔 Transfirió';
+      accion     = `<button class="btn btn-gold btn-sm" onclick="markDonPaid('${d.id}')">✓ Marcar como pagado</button> ${deleteBtn}`;
+    } else {
+      badgeClass = 'badge-pending-don';
+      badgeText  = '⏳ Pendiente';
+      accion     = `<button class="btn btn-ghost btn-sm" onclick="markDonPaid('${d.id}')">Marcar como pagado</button> ${deleteBtn}`;
+    }
+    // Nombres de los invitados de esta donación
+    const donGuests = allGuests.filter(g => g.codigo === d.codigo);
+    const guestLine = donGuests.length
+      ? donGuests.map(g => g.nombre.trim().split(' ')[0]).join(' · ')
+      : (d.nombre_grupo || '');
+
+    return `
+      <tr${d.transferido && !d.pagado ? ' style="background:rgba(184,151,90,.06);"' : ''}>
+        <td>
+          <div style="font-weight:500;">${escHtml(d.codigo || '—')}</div>
+          ${guestLine ? `<div style="font-size:.74rem;color:var(--ink-light);margin-top:2px;line-height:1.4;">${escHtml(guestLine)}</div>` : ''}
+        </td>
+        <td style="font-size:.82rem;line-height:1.8;">${labels.map(l => `<div>${l}</div>`).join('')}</td>
+        <td style="font-weight:500;">${fmtCLP(d.total_clp || 0)}</td>
+        <td><span class="status-badge ${badgeClass}">${badgeText}</span></td>
+        <td style="color:var(--ink-light);font-size:.82rem;">${fecha}</td>
+        <td>${accion}</td>
+      </tr>`;
+  }).join('');
+}
+
+async function markDonPaid(id) {
+  try {
+    const { error } = await sb.from('donaciones').update({ pagado: true }).eq('id', id);
+    if (error) throw error;
+    toast('Donación marcada como pagada ✓');
+    await loadDonaciones();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+async function deleteDon(id, codigo) {
+  if (!confirm(`¿Eliminar esta donación${codigo ? ' de ' + codigo : ''}? Esta acción no se puede deshacer.`)) return;
+  try {
+    const { error } = await sb.from('donaciones').delete().eq('id', id);
+    if (error) throw error;
+    toast('Donación eliminada ✓');
+    await loadDonaciones();
+  } catch(e) {
+    toast('Error: ' + (e.message || ''));
+  }
+}
+
+/* =============================================
+   CARRUSEL
+============================================= */
+let allCarrusel = [];
+
+async function loadCarrusel() {
+  const grid = document.getElementById('carruselGrid');
+  if (!grid) return;
+  grid.innerHTML = '<div class="empty"><div class="empty-icon">⏳</div>Cargando…</div>';
+  try {
+    const { data, error } = await sb.from('carousel_fotos').select('*').order('orden').order('created_at');
+    if (error) throw error;
+    allCarrusel = data || [];
+    renderCarrusel();
+  } catch(e) {
+    grid.innerHTML = `<div class="empty">Error: ${escHtml(e.message)}</div>`;
+  }
+}
+
+function renderCarrusel() {
+  const grid = document.getElementById('carruselGrid');
+  if (!grid) return;
+  if (!allCarrusel.length) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">🌸</div>Sin fotos todavía. ¡Sube la primera!</div>';
+    return;
+  }
+  grid.innerHTML = allCarrusel.map((f, i) => `
+    <div class="car-card">
+      <div class="car-card-img"><img src="${escHtml(f.foto_url)}" alt=""></div>
+      <div class="car-card-footer">
+        <span class="car-order-label">#${i + 1}</span>
+        <div class="car-order-btns">
+          <button class="car-order-btn" onclick="moveCarrusel('${f.id}',-1)" ${i === 0 ? 'disabled' : ''} title="Subir">↑</button>
+          <button class="car-order-btn" onclick="moveCarrusel('${f.id}', 1)" ${i === allCarrusel.length - 1 ? 'disabled' : ''} title="Bajar">↓</button>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteCarrusel('${f.id}')" title="Eliminar">🗑</button>
+      </div>
+    </div>`).join('');
+}
+
+async function uploadCarruselFoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('carruselUploadStatus');
+  status.textContent = 'Subiendo…';
+  try {
+    const ext  = file.name.split('.').pop().toLowerCase();
+    const path = `carousel/${Date.now()}.${ext}`;
+    const { error: upErr } = await sb.storage.from('fotos-boda').upload(path, file, { contentType: file.type });
+    if (upErr) throw upErr;
+    const { data: urlData } = sb.storage.from('fotos-boda').getPublicUrl(path);
+    const maxOrden = allCarrusel.length ? Math.max(...allCarrusel.map(f => f.orden || 0)) + 1 : 0;
+    const { error } = await sb.from('carousel_fotos').insert({ foto_url: urlData.publicUrl, orden: maxOrden });
+    if (error) throw error;
+    status.textContent = '✓ Foto subida';
+    input.value = '';
+    setTimeout(() => { status.textContent = ''; }, 2500);
+    await loadCarrusel();
+  } catch(e) {
+    status.textContent = 'Error: ' + (e.message || '');
+  }
+}
+
+async function moveCarrusel(id, dir) {
+  const idx = allCarrusel.findIndex(f => f.id === id);
+  if (idx < 0) return;
+  const swapIdx = idx + dir;
+  if (swapIdx < 0 || swapIdx >= allCarrusel.length) return;
+
+  const a = allCarrusel[idx];
+  const b = allCarrusel[swapIdx];
+  const ordenA = a.orden ?? idx;
+  const ordenB = b.orden ?? swapIdx;
+
+  try {
+    await Promise.all([
+      sb.from('carousel_fotos').update({ orden: ordenB }).eq('id', a.id),
+      sb.from('carousel_fotos').update({ orden: ordenA }).eq('id', b.id),
+    ]);
+    await loadCarrusel();
+  } catch(e) { toast('Error: ' + (e.message || '')); }
+}
+
+async function deleteCarrusel(id) {
+  const f = allCarrusel.find(f => f.id === id);
+  if (!confirm('¿Eliminar esta foto del carrusel?')) return;
+  try {
+    if (f?.foto_url) {
+      const prefix = `${SUPABASE_URL}/storage/v1/object/public/fotos-boda/`;
+      if (f.foto_url.startsWith(prefix)) {
+        const path = decodeURIComponent(f.foto_url.replace(prefix, ''));
+        await sb.storage.from('fotos-boda').remove([path]);
+      }
+    }
+    const { error } = await sb.from('carousel_fotos').delete().eq('id', id);
+    if (error) throw error;
+    toast('Foto eliminada ✓');
+    await loadCarrusel();
+  } catch(e) { toast('Error: ' + (e.message || '')); }
+}
+
+/* =============================================
+   TOAST
+============================================= */
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
