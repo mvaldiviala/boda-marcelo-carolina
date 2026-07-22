@@ -554,6 +554,11 @@
         <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Actualizar</button>
       </div>
       <div class="card-body">
+        <div class="filter-bar">
+          <button class="filter-btn active" id="invf-todas" onclick="setInvFilter('todas',this)">Todas</button>
+          <button class="filter-btn" id="invf-completa" onclick="setInvFilter('completa',this)">🍽️ Experiencia completa</button>
+          <button class="filter-btn" id="invf-fiesta" onclick="setInvFilter('fiesta',this)">🎉 Solo fiesta</button>
+        </div>
         <div class="inv-list" id="invList">
           <div class="empty"><div class="empty-icon">🌸</div>Cargando...</div>
         </div>
@@ -769,6 +774,7 @@ const DONATION_ITEMS = [
 let sb = null;
 let allGuests = [];
 let allInvs   = [];
+let invFilter = 'todas';
 let allDon    = [];
 let activeFilter = 'all';
 
@@ -902,13 +908,25 @@ function menuBar(items) {
 /* =============================================
    INVITATIONS LIST
 ============================================= */
+function setInvFilter(val, btn) {
+  invFilter = val;
+  document.querySelectorAll('#invf-todas,#invf-completa,#invf-fiesta').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderInvList();
+}
+
 function renderInvList() {
   const container = document.getElementById('invList');
   if (!allInvs.length) {
     container.innerHTML = '<div class="empty"><div class="empty-icon">🎌</div>No hay invitaciones aún. Crea la primera arriba.</div>';
     return;
   }
-  container.innerHTML = allInvs.map(inv => {
+  const filtered = invFilter === 'todas' ? allInvs : allInvs.filter(inv => inv.tipo === invFilter);
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>No hay invitaciones de este tipo.</div>';
+    return;
+  }
+  container.innerHTML = filtered.map(inv => {
     const guests = allGuests.filter(g => g.codigo === inv.codigo);
     const conf   = guests.filter(g => g.confirmado === true).length;
     const dec    = guests.filter(g => g.confirmado === false).length;
