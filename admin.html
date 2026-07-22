@@ -959,6 +959,7 @@ function renderInvList() {
           <button class="btn btn-gold btn-sm" id="grpns-${inv.codigo}" style="display:none;flex-shrink:0;" onclick="event.stopPropagation();saveGrupo('${inv.codigo}')">✓</button>
           <button class="btn btn-ghost btn-sm" id="grpnc-${inv.codigo}" style="display:none;flex-shrink:0;" onclick="event.stopPropagation();cancelGrupo('${inv.codigo}')">✕</button>
           ${typeBadge}
+          ${guests.length ? `<span style="font-size:.72rem;color:var(--ink-light);margin-left:4px;">${guests.map(g=>escHtml(g.nombre)).join(' · ')}</span>` : ''}
           ${tipoBadge}
           <div class="inv-progress">
             ${conf  ? `<span class="pip green"></span>${conf} sí` : ''}
