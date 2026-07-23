@@ -1495,8 +1495,21 @@ function renderConfTable() {
     return true;
   });
 
-  const completa = applyFilter(rows.filter(g => g.tipo !== 'fiesta'));
-  const fiesta   = applyFilter(rows.filter(g => g.tipo === 'fiesta'));
+  const sortByGrupo = arr => [...arr].sort((a,b) => a.grupo.localeCompare(b.grupo, 'es') || (a.orden??99) - (b.orden??99));
+  const groupRows = (arr, cols, renderRow) => {
+    let last = null, html = '';
+    for (const g of arr) {
+      if (g.grupo !== last) {
+        html += `<tr style="background:var(--cream);"><td colspan="${cols}" style="padding:5px 10px;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-light);font-weight:600;border-bottom:1px solid var(--border);">${escHtml(g.grupo)}</td></tr>`;
+        last = g.grupo;
+      }
+      html += renderRow(g);
+    }
+    return html;
+  };
+
+  const completa = applyFilter(sortByGrupo(rows.filter(g => g.tipo !== 'fiesta')));
+  const fiesta   = applyFilter(sortByGrupo(rows.filter(g => g.tipo === 'fiesta')));
 
   // Contador en header
   document.getElementById('countCompleta').textContent = `${completa.length} personas`;
@@ -1505,7 +1518,7 @@ function renderConfTable() {
   // Tabla experiencia completa
   const tbCompleta = document.getElementById('confTableCompleta');
   tbCompleta.innerHTML = completa.length
-    ? completa.map(g => {
+    ? groupRows(completa, 5, g => {
         const [cls, lbl] = statusMap[g.confirmado] ?? statusMap[null];
         const dressingNote = g.entrada === 'bouquet' ? (g.dressing !== false ? ' · c/dressing' : ' · s/dressing') : '';
         return `<tr>
@@ -1515,20 +1528,20 @@ function renderConfTable() {
           <td>${g.entrada ? `<span class="menu-chip">${entradaLabel[g.entrada] || g.entrada}${dressingNote}</span>` : '<span style="color:var(--border)">—</span>'}</td>
           <td>${g.plato_fondo ? `<span class="menu-chip">${platoLabel[g.plato_fondo] || g.plato_fondo}</span>` : '<span style="color:var(--border)">—</span>'}</td>
         </tr>`;
-      }).join('')
+      })
     : `<tr><td colspan="5"><div class="empty"><div class="empty-icon">🌸</div>Sin resultados.</div></td></tr>`;
 
   // Tabla solo fiesta
   const tbFiesta = document.getElementById('confTableFiesta');
   tbFiesta.innerHTML = fiesta.length
-    ? fiesta.map(g => {
+    ? groupRows(fiesta, 3, g => {
         const [cls, lbl] = statusMap[g.confirmado] ?? statusMap[null];
         return `<tr>
           <td style="font-weight:500;">${escHtml(g.nombre)}</td>
           <td style="color:var(--ink-mid);">${escHtml(g.grupo)}</td>
           <td><span class="status-badge ${cls}">${lbl}</span></td>
         </tr>`;
-      }).join('')
+      })
     : `<tr><td colspan="3"><div class="empty"><div class="empty-icon">🎉</div>Sin resultados.</div></td></tr>`;
 }
 
