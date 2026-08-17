@@ -1519,6 +1519,8 @@ function renderConfTable() {
       if (g.grupo !== last) {
         if (groupCount[g.grupo] > 1)
           html += `<tr style="background:var(--cream);"><td colspan="${cols}" style="padding:5px 10px;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-light);font-weight:600;border-bottom:1px solid var(--border);">${escHtml(g.grupo)}</td></tr>`;
+        else if (last !== null)
+          html += `<tr><td colspan="${cols}" style="padding:0;border-top:1px solid var(--border);"></td></tr>`;
         last = g.grupo;
       }
       html += renderRow(g);
