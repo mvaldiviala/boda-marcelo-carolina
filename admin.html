@@ -559,6 +559,11 @@
           <button class="filter-btn" id="invf-completa" onclick="setInvFilter('completa',this)">🍽️ Experiencia completa</button>
           <button class="filter-btn" id="invf-fiesta" onclick="setInvFilter('fiesta',this)">🎉 Solo fiesta</button>
         </div>
+        <div class="filter-bar" style="margin-top:6px">
+          <button class="filter-btn active" id="invf-env-todas" onclick="setEnviadaFilter('todas',this)">Enviadas y no enviadas</button>
+          <button class="filter-btn" id="invf-env-si" onclick="setEnviadaFilter('si',this)">📨 Enviadas</button>
+          <button class="filter-btn" id="invf-env-no" onclick="setEnviadaFilter('no',this)">📭 No enviadas</button>
+        </div>
         <div class="inv-list" id="invList">
           <div class="empty"><div class="empty-icon">🌸</div>Cargando...</div>
         </div>
@@ -775,6 +780,7 @@ let sb = null;
 let allGuests = [];
 let allInvs   = [];
 let invFilter = 'todas';
+let invEnviadaFilter = 'todas';
 let allDon    = [];
 let activeFilter = 'all';
 
@@ -915,13 +921,22 @@ function setInvFilter(val, btn) {
   renderInvList();
 }
 
+function setEnviadaFilter(val, btn) {
+  invEnviadaFilter = val;
+  document.querySelectorAll('#invf-env-todas,#invf-env-si,#invf-env-no').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderInvList();
+}
+
 function renderInvList() {
   const container = document.getElementById('invList');
   if (!allInvs.length) {
     container.innerHTML = '<div class="empty"><div class="empty-icon">🎌</div>No hay invitaciones aún. Crea la primera arriba.</div>';
     return;
   }
-  const filtered = invFilter === 'todas' ? allInvs : allInvs.filter(inv => inv.tipo === invFilter);
+  const filtered = allInvs
+    .filter(inv => invFilter === 'todas' || inv.tipo === invFilter)
+    .filter(inv => invEnviadaFilter === 'todas' || (invEnviadaFilter === 'si' ? inv.enviada : !inv.enviada));
   if (!filtered.length) {
     container.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div>No hay invitaciones de este tipo.</div>';
     return;
