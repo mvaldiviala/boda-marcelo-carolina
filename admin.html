@@ -1512,10 +1512,13 @@ function renderConfTable() {
 
   const sortByGrupo = arr => [...arr].sort((a,b) => a.grupo.localeCompare(b.grupo, 'es') || (a.orden??99) - (b.orden??99));
   const groupRows = (arr, cols, renderRow) => {
+    const groupCount = {};
+    for (const g of arr) groupCount[g.grupo] = (groupCount[g.grupo] || 0) + 1;
     let last = null, html = '';
     for (const g of arr) {
       if (g.grupo !== last) {
-        html += `<tr style="background:var(--cream);"><td colspan="${cols}" style="padding:5px 10px;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-light);font-weight:600;border-bottom:1px solid var(--border);">${escHtml(g.grupo)}</td></tr>`;
+        if (groupCount[g.grupo] > 1)
+          html += `<tr style="background:var(--cream);"><td colspan="${cols}" style="padding:5px 10px;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-light);font-weight:600;border-bottom:1px solid var(--border);">${escHtml(g.grupo)}</td></tr>`;
         last = g.grupo;
       }
       html += renderRow(g);
